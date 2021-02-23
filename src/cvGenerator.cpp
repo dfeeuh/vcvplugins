@@ -1,5 +1,6 @@
 #include "plugin.hpp"
 
+#define NUM_NOTES 7
 
 struct CvGenerator : Module {
 	enum ParamIds {
@@ -19,6 +20,14 @@ struct CvGenerator : Module {
 		BLINK_LIGHT,
 		NUM_LIGHTS
 	};
+
+	typedef enum keyIds {
+		C_MAG=0,
+		NUM_KEYS
+	} KEY;
+
+	const unsigned keyMapBasis[NUM_NOTES] = {0, 2, 4, 5, 7, 9, 11};
+	unsigned keyMap[NUM_NOTES];
 
 	bool running = true;
 	dsp::SchmittTrigger clockTrigger;
@@ -55,6 +64,38 @@ struct CvGenerator : Module {
 		return lfsr;
 	}
 
+	void generateNewKeyIds(KEY newKeyId)
+	{
+		// Everytime a new key is selected, generate a new key map
+		for (unsigned i=0; i<NUM_NOTES; i++)
+		{
+			// Key = (C major + new key root note) modulo 12
+			keyMap[i] = (newKeyId + keyMapBasis[i]) % 12;
+		}
+
+		// Sort to make all notes in order
+		std::sort(keyMap, keyMap+NUM_NOTES);
+	}
+
+	inline unsigned snapToKey(unsigned midiNoteIn, KEY keyId)
+	{
+		// First get octave and map midiNoteIn to 0 to 11:
+		// unsigned octave = midiNoteIn / 12;
+		// unsigned basisNote  = midiNoteIn - (octave * 12);
+
+		// Then use a binary search algorithm to find the nearest value.
+
+		// In order to cope with numbers exactly half, e.g. 10 for C Major 
+		// is exactly half way between 9 and 11, the LFSR generates
+		// Qx.1 (i.e. with 0 or 0.5). Then round up and using a search algorithm
+		// that favours the lower side (10 will snap to 9, 10.5 will snap to 11).
+		// Read https://en.wikipedia.org/wiki/Binary_search_algorithm
+		// This looks promising: https://thecleverprogrammer.com/2020/11/11/binary-search-in-c/
+
+		// return (snappedNote + octave * 12);
+		return midiNoteIn;
+	}
+
 	void process(const ProcessArgs& args) override {
 		// Run - TODO Add this
 		// if (runningTrigger.process(params[RUN_PARAM].getValue())) {
@@ -79,12 +120,17 @@ struct CvGenerator : Module {
 				}
 			}
 		
-			// if gateIn transitions to high generate a new value
 			if (gateIn)
 			{
-				cv_out = ((lfsr2() & 0x7F) - 60.0f) / 12.f;
+				// if gateIn transitions to high generate a new value
+				unsigned randomNote = lfsr2() & 0x7F;
+				randomNote = snapToKey(randomNote, C_MAG);
+				cv_out = (randomNote - 60.0f) / 12.f;
 			}  
+
 			// To Do - manipulate durations by changing the thresholds!
+
+			// Oops - What happens for external clock? There is no phase increment!
 			outputs[GATE_OUTPUT].setVoltage((phase < 0.5f) ? 10.f : 0);
 			outputs[CV_OUTPUT].setVoltage(cv_out);
 

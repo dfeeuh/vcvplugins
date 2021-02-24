@@ -2,7 +2,8 @@
 
 #include <algorithm>
 
-#define NUM_NOTES 7
+#define NUM_NOTES_IN_SCALE 7
+#define NUM_NOTES_CHROMATIC 12
 
 struct NoteGenerator
 {
@@ -26,36 +27,36 @@ struct NoteGenerator
 		NUM_KEYS
 	} KEY;
 
-	const unsigned keyMapBasis[NUM_NOTES] = {0, 2, 4, 5, 7, 9, 11};
-	unsigned keyMap[NUM_NOTES];
+	const unsigned keyMapBasis[NUM_NOTES_IN_SCALE] = {0, 2, 4, 5, 7, 9, 11};
+	unsigned keyMapChrom[NUM_NOTES_CHROMATIC];
 	KEY currentKey;
 
     NoteGenerator() : start_state{0xACE1u}, currentKey{NONE} {
 		lfsr = start_state;
     }
 
-	int binarySearch(int note)
+	unsigned binarySearch(unsigned *array, unsigned len, unsigned note)
 	{
 		// Set as the wraparound case, in case no matches are found
-		int closest = keyMap[NUM_NOTES-1];
+		unsigned closest = array[len-1];
 		int s = 0;
-		int e = NUM_NOTES;
+		int e = NUM_NOTES_IN_SCALE;
 		while (s <= e)
 		{
 			int mid = (s + e) / 2;
-			if (note == keyMap[mid])
+			if (note == array[mid])
 			{
-				return keyMap[mid];
+				return array[mid];
 			}
-			else if (keyMap[mid] > note)
+			else if (array[mid] > note)
 			{
 				e = mid - 1;
 			}
 			else
 			{
 				// Favour rounding down
-				if (note-keyMap[mid] == 1)
-					closest = keyMap[mid];
+				if (note-array[mid] == 1)
+					closest = array[mid];
 
 				s = mid + 1;
 			}
@@ -70,18 +71,10 @@ struct NoteGenerator
             return (noteIn);
 			
 		// First get octave and map midiNoteIn to 0 to 11:
-		unsigned octave = noteIn / (12);
-		unsigned basisNote  = noteIn - (octave * (12));
+		unsigned octave = noteIn / NUM_NOTES_CHROMATIC;
+		unsigned basisNote  = noteIn - (octave * NUM_NOTES_CHROMATIC);
 
-		// Then use a binary search algorithm to find the nearest value.
-
-		// In order to cope with numbers exactly half, e.g. 10 for C Major 
-		// is exactly half way between 9 and 11, the LFSR generates
-		// Qx.1 (i.e. with 0 or 0.5). Then round up and using a search algorithm
-		// that favours the lower side (10 will snap to 9, 10.5 will snap to 11).
-		// Read https://en.wikipedia.org/wiki/Binary_search_algorithm
-		// This looks promising: https://thecleverprogrammer.com/2020/11/11/binary-search-in-c/
-		unsigned note = binarySearch(basisNote);
+		unsigned note = keyMapChrom[basisNote];
 
 		return (note + octave * 12);
 	}	
@@ -113,18 +106,33 @@ struct NoteGenerator
     
     void setKey(KEY newKeyId)
 	{
+      	unsigned workspace[NUM_NOTES_IN_SCALE];
+
 		currentKey = newKeyId;
 		if (newKeyId == NONE)
 			return; 
 
 		// Everytime a new key is selected, generate a new key map
-		for (unsigned i=0; i<NUM_NOTES; i++)
+		for (unsigned i=0; i<NUM_NOTES_IN_SCALE; i++)
 		{
 			// Key = (C major + new key root note) modulo 12
-			keyMap[i] = (newKeyId + keyMapBasis[i]) % 12;
+			workspace[i] = (newKeyId + keyMapBasis[i]) % 12;
 		}
 
 		// Sort to make all notes in order
-		std::sort(keyMap, keyMap+NUM_NOTES);
+		std::sort(workspace, workspace+NUM_NOTES_IN_SCALE);
+		
+		for (unsigned i=0; i<NUM_NOTES_CHROMATIC; i++)
+		{
+			// Then use a binary search algorithm to find the nearest value.
+
+			// In order to cope with numbers exactly half, e.g. 10 for C Major 
+			// is exactly half way between 9 and 11, the LFSR generates
+			// Qx.1 (i.e. with 0 or 0.5). Then round up and using a search algorithm
+			// that favours the lower side (10 will snap to 9, 10.5 will snap to 11).
+			// Read https://en.wikipedia.org/wiki/Binary_search_algorithm
+			// This looks promising: https://thecleverprogrammer.com/2020/11/11/binary-search-in-c/
+			keyMapChrom[i] = binarySearch(workspace, NUM_NOTES_IN_SCALE, i);
+		}		
 	}
 };

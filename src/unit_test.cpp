@@ -66,11 +66,22 @@ TEST_F (NoteGeneratorTest, testSnapToKey_noteNotInKey)
 {
     noteGen.setKey(noteGen.A_MAG);
     // Snap to 1, 2, 4, 6, 8, 9, 11
-    EXPECT_EQ(noteGen.binarySearch(0), 11);
     EXPECT_EQ(noteGen.binarySearch(3), 2);
     EXPECT_EQ(noteGen.binarySearch(5), 4);
     EXPECT_EQ(noteGen.binarySearch(7), 6);
     EXPECT_EQ(noteGen.binarySearch(10), 9);
+}
+
+TEST_F (NoteGeneratorTest, testSnapToKey_wrapAround_low)
+{
+    noteGen.setKey(noteGen.A_MAG);
+    EXPECT_EQ(noteGen.binarySearch(0), 11);
+}
+
+TEST_F (NoteGeneratorTest, testSnapToKey_wrapAround_high)
+{
+    noteGen.setKey(noteGen.Cs_MAG);
+    EXPECT_EQ(noteGen.binarySearch(11), 10);
 }
 
 int main(int argc, char **argv) {

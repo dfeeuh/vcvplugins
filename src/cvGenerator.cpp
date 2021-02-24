@@ -1,6 +1,5 @@
+#include "NoteGenerator.hpp"
 #include "plugin.hpp"
-
-#define NUM_NOTES 7
 
 struct CvGenerator : Module {
 	enum ParamIds {
@@ -21,79 +20,20 @@ struct CvGenerator : Module {
 		NUM_LIGHTS
 	};
 
-	typedef enum keyIds {
-		C_MAG=0,
-		NUM_KEYS
-	} KEY;
-
-	const unsigned keyMapBasis[NUM_NOTES] = {0, 2, 4, 5, 7, 9, 11};
-	unsigned keyMap[NUM_NOTES];
+	// This object mangages the generation of random notes
+	NoteGenerator noteGen;
 
 	bool running = true;
 	dsp::SchmittTrigger clockTrigger;
 	/** Phase of internal LFO */
 	float phase = 0.f;
-
-	uint16_t start_state;
-	uint16_t lfsr;
 	float cv_out;
 
 	CvGenerator() {
 		config(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_LIGHTS);
 		configParam(CLOCK_PARAM, -2.f, 6.f, 2.f, "Clock tempo", " bpm", 2.f, 60.f);
 
-		start_state = 0xACE1u;  /* Any nonzero start state will work. */
-		lfsr = start_state;
-	}
-
-	// run the linear feedback shift register
-	// From https://en.wikipedia.org/wiki/Linear-feedback_shift_register#Galois_LFSRs
-	inline unsigned lfsr2(void)
-	{
-#ifndef LEFT
-		unsigned lsb = lfsr & 1u;  /* Get LSB (i.e., the output bit). */
-		lfsr >>= 1;                /* Shift register */
-		if (lsb)                   /* If the output bit is 1, */
-			lfsr ^= 0xB400u;       /*  apply toggle mask. */
-#else
-		unsigned msb = (int16_t) lfsr < 0;   /* Get MSB (i.e., the output bit). */
-		lfsr <<= 1;                          /* Shift register */
-		if (msb)                             /* If the output bit is 1, */
-			lfsr ^= 0x002Du;                 /*  apply toggle mask. */
-#endif
-		return lfsr;
-	}
-
-	void generateNewKeyIds(KEY newKeyId)
-	{
-		// Everytime a new key is selected, generate a new key map
-		for (unsigned i=0; i<NUM_NOTES; i++)
-		{
-			// Key = (C major + new key root note) modulo 12
-			keyMap[i] = (newKeyId + keyMapBasis[i]) % 12;
-		}
-
-		// Sort to make all notes in order
-		std::sort(keyMap, keyMap+NUM_NOTES);
-	}
-
-	inline unsigned snapToKey(unsigned midiNoteIn, KEY keyId)
-	{
-		// First get octave and map midiNoteIn to 0 to 11:
-		// unsigned octave = midiNoteIn / 12;
-		// unsigned basisNote  = midiNoteIn - (octave * 12);
-
-		// Then use a binary search algorithm to find the nearest value.
-
-		// In order to cope with numbers exactly half, e.g. 10 for C Major 
-		// is exactly half way between 9 and 11, the LFSR generates
-		// Qx.1 (i.e. with 0 or 0.5). Then round up and using a search algorithm
-		// that favours the lower side (10 will snap to 9, 10.5 will snap to 11).
-		// Read https://en.wikipedia.org/wiki/Binary_search_algorithm
-		// This looks promising: https://thecleverprogrammer.com/2020/11/11/binary-search-in-c/
-
-		// return (snappedNote + octave * 12);
-		return midiNoteIn;
+		noteGen.setKey(noteGen.C_MAG);
 	}
 
 	void process(const ProcessArgs& args) override {
@@ -123,9 +63,8 @@ struct CvGenerator : Module {
 			if (gateIn)
 			{
 				// if gateIn transitions to high generate a new value
-				unsigned randomNote = lfsr2() & 0x7F;
-				randomNote = snapToKey(randomNote, C_MAG);
-				cv_out = (randomNote - 60.0f) / 12.f;
+				unsigned randomNote = noteGen.generate();
+				cv_out = noteGen.noteToCv(randomNote);
 			}  
 
 			// To Do - manipulate durations by changing the thresholds!

@@ -7,6 +7,9 @@
 
 struct NoteGenerator
 {
+    unsigned upper;
+    unsigned lower;
+
     uint16_t start_state;
 	uint16_t lfsr;
 
@@ -31,13 +34,15 @@ struct NoteGenerator
 	unsigned keyMapChrom[NUM_NOTES_CHROMATIC];
 	KEY currentKey;
 
-    NoteGenerator() : start_state{0xACE1u}, currentKey{NONE} {
+    NoteGenerator() : upper{0x72}, lower{60}, start_state{0xACE1u}, currentKey{NONE} {
 		lfsr = start_state;
     }
 
 	unsigned binarySearch(unsigned *array, unsigned len, unsigned note)
 	{
-		// Set as the wraparound case, in case no matches are found
+		// Read https://en.wikipedia.org/wiki/Binary_search_algorithm
+	
+    	// Set as the wraparound case, in case no matches are found
 		unsigned closest = array[len-1];
 		int s = 0;
 		int e = NUM_NOTES_IN_SCALE;
@@ -65,6 +70,16 @@ struct NoteGenerator
 		return closest;
 	}
 
+    void setLower(unsigned x)
+    {
+        lower = std::min(x, upper-NUM_NOTES_CHROMATIC);
+    }
+
+    void setUpper(unsigned x)
+    {
+        upper = std::max(x, lower+NUM_NOTES_CHROMATIC);
+    }
+
     unsigned snapToKey(unsigned noteIn)
 	{
         if (currentKey == NONE)
@@ -76,15 +91,13 @@ struct NoteGenerator
 
 		unsigned note = keyMapChrom[basisNote];
 
-		return (note + octave * 12);
+		return (note + octave * NUM_NOTES_CHROMATIC);
 	}	
     
    	// Run a linear feedback shift register
 	// From https://en.wikipedia.org/wiki/Linear-feedback_shift_register#Galois_LFSRs
 	unsigned generate(void)
 	{
-		// Generate the number in Qx.1 format to get a half.
-
 #ifndef LEFT
 		unsigned lsb = lfsr & 1u;  /* Get LSB (i.e., the output bit). */
 		lfsr >>= 1;                /* Shift register */
@@ -96,7 +109,25 @@ struct NoteGenerator
 		if (msb)                             /* If the output bit is 1, */
 			lfsr ^= 0x002Du;                 /*  apply toggle mask. */
 #endif
-		return snapToKey(lfsr & 0x7F);
+
+        // Generate the number in Qx.1 format to get a half.
+        // Then round. Not sure it makes a big difference.
+        unsigned noteout = lfsr & 0xFF;
+        noteout = ((noteout += 1) >> 1);
+
+        while (noteout > upper)
+        {
+            // Subtract an octave. Upper can never be less than NUM_NOTES_CHROMATIC
+            noteout -= NUM_NOTES_CHROMATIC;
+        }
+
+        while (noteout < lower)
+        {
+            // Lower can never be greater than 115
+            noteout += NUM_NOTES_CHROMATIC;
+        }
+
+		return snapToKey(noteout);
 	} 
 
     float noteToCv(unsigned note)
@@ -124,14 +155,7 @@ struct NoteGenerator
 		
 		for (unsigned i=0; i<NUM_NOTES_CHROMATIC; i++)
 		{
-			// Then use a binary search algorithm to find the nearest value.
-
-			// In order to cope with numbers exactly half, e.g. 10 for C Major 
-			// is exactly half way between 9 and 11, the LFSR generates
-			// Qx.1 (i.e. with 0 or 0.5). Then round up and using a search algorithm
-			// that favours the lower side (10 will snap to 9, 10.5 will snap to 11).
-			// Read https://en.wikipedia.org/wiki/Binary_search_algorithm
-			// This looks promising: https://thecleverprogrammer.com/2020/11/11/binary-search-in-c/
+			// Use a binary search algorithm to fill an array with the nearest value.
 			keyMapChrom[i] = binarySearch(workspace, NUM_NOTES_IN_SCALE, i);
 		}		
 	}

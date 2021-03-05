@@ -30,12 +30,73 @@ struct NoteGenerator
 		NUM_KEYS
 	} KEY;
 
+    typedef enum 
+    {
+        FLAT=-1,
+        NATURAL,
+        SHARP
+    } ACCIDENTAL;
+
 	const unsigned keyMapBasis[NUM_NOTES_IN_SCALE] = {0, 2, 4, 5, 7, 9, 11};
 	unsigned keyMapChrom[NUM_NOTES_CHROMATIC];
 	KEY currentKey;
 
     NoteGenerator() : upper{0x72}, lower{60}, start_state{0xACE1u}, currentKey{NONE} {
 		lfsr = start_state;
+    }
+
+    // Given the parameters, converted to a KEY type
+    // note: -1 = none
+    // isMinor: if true, return the minor (major key down three semitones)
+    // accidental: -1 = flat, 0 = natural; +1 = sharp
+    KEY getKey(int note, bool isMinor, ACCIDENTAL accidental)
+    {
+        KEY key = NONE;
+        switch(note)
+        {
+            case -1:
+                return NONE;
+                break;
+            case 0:
+                key = A_MAG;
+                if (isMinor)
+                    key = Fs_MAG;
+                break;
+            case 1:
+                key = B_MAG;
+                if (isMinor)
+                    key = Gs_MAG;
+                break;
+            case 2:
+                key = C_MAG;
+                if (isMinor)
+                    key = A_MAG;
+                break;
+            case 3:
+                key = D_MAG;
+                if (isMinor)
+                    key = B_MAG;
+                break;
+            case 4:
+                key = E_MAG;
+                if (isMinor)
+                    key = Cs_MAG;
+                break;
+            case 5:
+                key = F_MAG;
+                if (isMinor)
+                    key = D_MAG;
+                break;
+            case 6:
+                key = G_MAG;
+                if (isMinor)
+                    key = E_MAG;
+                break;
+            default:
+                return NONE;
+        }
+        // Ugly!
+        return (KEY)((int)key + (int)accidental);
     }
 
 	unsigned binarySearch(unsigned *array, unsigned len, unsigned note)

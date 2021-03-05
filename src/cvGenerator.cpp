@@ -27,7 +27,7 @@ struct CvGenerator : Module {
 		NUM_LIGHTS
 	};
 
-	// This object mangages the generation of random notes
+	// This object mangages the generation of random notes, including key snapping
 	NoteGenerator noteGen;
 
 	bool running = true;
@@ -38,7 +38,10 @@ struct CvGenerator : Module {
 	float phase = 0.f;
 	float cv_out;
 
-	CvGenerator() {
+
+	CvGenerator() :    
+        phase{0.f}
+    {
 		config(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_LIGHTS);
 	    configParam(CLOCK_PARAM, -2.f, 6.f, 2.f, "Clock tempo", " bpm", 2.f, 60.f);
 		configParam(RUN_PARAM, 0.f, 1.f, 0.f);
@@ -47,26 +50,22 @@ struct CvGenerator : Module {
 		configParam(RANGEMAX_PARAM, 1.f, 127.f, 127.f, "Maximum");
         configParam(MAJMIN_PARAM, 0.f, 1.f, 1.f, "Major Minor");
         configParam(SHARPFLAT_PARAM, -1.0, 1.f, 0.f, "Sharp Flat Natural");
-
-
-		noteGen.setKey(noteGen.C_MAG);
 	}
 
 	void process(const ProcessArgs& args) override {
-		// Run - TODO Add this
+		// Run
 		if (runningTrigger.process(params[RUN_PARAM].getValue())) {
 			running = !running;
 		}
 		
-		bool gateIn = false;
 		if (running) {
-            // TODO read a parameter for Key, upper and lower limits here
-            // Key could be set with dial A-G, Switch for Major/Minor, Natural/Sharp
+    		bool gateIn = false;
 
 			if (inputs[EXCLOC_INPUT].isConnected()) {
 				// External clock
 				clockTrigger.process(inputs[EXCLOC_INPUT].getVoltage());
 				gateIn = clockTrigger.isHigh();
+                phase = gateIn ? 0.0f : 1.0f;
 			}
 			else {
 				// Internal clock
@@ -79,23 +78,38 @@ struct CvGenerator : Module {
 				}
 			}
 		
-			if (gateIn)
-			{
+			if (gateIn) {
+                // Only check input parameters change on a new gate event.
+                noteGen.setKey(noteGen.getKey(
+                        params[KEY_PARAM].getValue(), 
+                        params[MAJMIN_PARAM].getValue() == 1.f ? true : false, 
+                        (NoteGenerator::ACCIDENTAL)params[SHARPFLAT_PARAM].getValue()
+                        ));
+                
+                noteGen.setLower(params[RANGEMIN_PARAM].getValue());
+                noteGen.setUpper(params[RANGEMAX_PARAM].getValue());
+
 				// if gateIn transitions to high generate a new value
 				unsigned randomNote = noteGen.generate();
 				cv_out = noteGen.noteToCv(randomNote);
 			}  
 
-			// To Do - manipulate durations by changing the thresholds!
+			// TODO - manipulate durations by changing the thresholds!
 
-			// Oops - What happens for external clock? There is no phase increment!
+			// TODO Oops - What happens for external clock? There is no phase increment!
 			outputs[GATE_OUTPUT].setVoltage((phase < 0.5f) ? 10.f : 0);
 			outputs[CV_OUTPUT].setVoltage(cv_out);
 
 			// Blink light at 1Hz	
 			lights[BLINK_LIGHT].setBrightness((phase < 0.5) ? 1.f : 0.f);
-		    lights[RUNNING_LIGHT].value = (running);
+            lights[RUNNING_LIGHT].setBrightness(1.f);
 		}
+        else
+        {
+   			outputs[GATE_OUTPUT].setVoltage(0);
+            lights[BLINK_LIGHT].setBrightness(0.f);
+            lights[RUNNING_LIGHT].setBrightness(0.f);
+        }	    
 	}
 };
 
@@ -110,8 +124,8 @@ struct CvGeneratorWidget : ModuleWidget {
 		addChild(createWidget<ScrewSilver>(Vec(box.size.x - 2 * RACK_GRID_WIDTH, RACK_GRID_HEIGHT - RACK_GRID_WIDTH)));
 
 		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(14.273, 83.552)), module, CvGenerator::CLOCK_PARAM));
-		addParam(createParam<LEDButton>(mm2px(Vec(9.0, 21.35)), module, CvGenerator::RUN_PARAM));
-		addChild(createLight<MediumLight<GreenLight>>(mm2px(Vec(9.0, 21.35)), module, CvGenerator::RUNNING_LIGHT));
+		addParam(createParamCentered<LEDButton>(mm2px(Vec(9.0, 21.35)), module, CvGenerator::RUN_PARAM));
+		addChild(createLightCentered<MediumLight<GreenLight>>(mm2px(Vec(9.0, 21.35)), module, CvGenerator::RUNNING_LIGHT));
 
 		addParam(createParamCentered<RoundBlackSnapKnob>(mm2px(Vec(25.4, 39.551)), module, CvGenerator::KEY_PARAM));
 		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(14.273, 58.756)), module, CvGenerator::RANGEMIN_PARAM));

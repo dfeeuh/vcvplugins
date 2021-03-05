@@ -566,5 +566,12 @@
        cy="21.355656"
        inkscape:label="run"
        r="4" />
+    <circle
+       inkscape:label="runLight"
+       cy="21.355656"
+       cx="9.0958691"
+       id="circle66-9"
+       style="display:inline;vector-effect:none;fill:#ff00ff;fill-opacity:1;fill-rule:evenodd;stroke:none;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;paint-order:normal"
+       r="4" />
   </g>
 </svg>

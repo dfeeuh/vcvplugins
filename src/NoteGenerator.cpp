@@ -118,9 +118,22 @@ unsigned NoteGenerator::snapToKey(unsigned noteIn)
 
 void NoteGenerator::mapToRange(unsigned &note)
 {
-    float flNote = (note * 1.f) / 128.f;
-    flNote *= noteRange / 2;
-    note = (unsigned)flNote + centreNote;
+    // Calculate upper and lower boundaries
+    float upper = centreNote + (float)noteRange * 0.5f;
+    float lower = upper - noteRange;
+    
+    unsigned ui32upper = (upper > 127.f) ? 127.f : (unsigned)upper;
+    unsigned ui32lower = (lower < 0.f) ? 0 : (unsigned)lower;
+
+    // Wrap into the correct octave
+    while (note > ui32upper)
+        note -= NUM_NOTES_CHROMATIC;
+
+    while (note < ui32lower)
+        note += NUM_NOTES_CHROMATIC;
+
+    // Clamp into min max if we've overshot
+    if (note > ui32upper) note = ui32upper;
 }
 
 // Run a linear feedback shift register

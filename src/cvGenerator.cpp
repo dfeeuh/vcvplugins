@@ -87,8 +87,8 @@ struct CvGenerator : Module {
                         (NoteGenerator::ACCIDENTAL)params[SHARPFLAT_PARAM].getValue()
                         ));
                 
-                noteGen.setNoteOffset(params[NOTECENTRE_PARAM].getValue());
-                noteGen.setNoteRange(params[NOTERANGE_PARAM].getValue());
+                noteGen.setNoteOffset((unsigned)params[NOTECENTRE_PARAM].getValue());
+                noteGen.setNoteRange((unsigned)params[NOTERANGE_PARAM].getValue());
 
 				// if gateIn transitions to high generate a new value
 				unsigned randomNote = noteGen.generate();

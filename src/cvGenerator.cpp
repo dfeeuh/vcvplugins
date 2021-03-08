@@ -6,8 +6,8 @@ struct CvGenerator : Module {
 		CLOCK_PARAM,
 		KEY_PARAM,
         RUN_PARAM,
-		RANGEMIN_PARAM,
-		RANGEMAX_PARAM,
+		NOTECENTRE_PARAM,
+		NOTERANGE_PARAM,
         MAJMIN_PARAM,
         SHARPFLAT_PARAM,
 		NUM_PARAMS
@@ -46,8 +46,8 @@ struct CvGenerator : Module {
 	    configParam(CLOCK_PARAM, -2.f, 6.f, 2.f, "Clock tempo", " bpm", 2.f, 60.f);
 		configParam(RUN_PARAM, 0.f, 1.f, 0.f);
         configParam(KEY_PARAM, 0.f, 7.f, 0.f, "Key");
-		configParam(RANGEMIN_PARAM, 0.f, 126.f, 0.f, "Minimum");
-		configParam(RANGEMAX_PARAM, 1.f, 127.f, 127.f, "Maximum");
+		configParam(NOTECENTRE_PARAM, 0.f, 127.f, 64.f, "Key Offset");
+		configParam(NOTERANGE_PARAM, 1.f, 127.f, 64.f, "Key Range");
         configParam(MAJMIN_PARAM, 0.f, 1.f, 1.f, "Major Minor");
         configParam(SHARPFLAT_PARAM, -1.0, 1.f, 0.f, "Sharp Flat Natural");
 	}
@@ -87,8 +87,8 @@ struct CvGenerator : Module {
                         (NoteGenerator::ACCIDENTAL)params[SHARPFLAT_PARAM].getValue()
                         ));
                 
-                noteGen.setLower(params[RANGEMIN_PARAM].getValue());
-                noteGen.setUpper(params[RANGEMAX_PARAM].getValue());
+                noteGen.setNoteOffset(params[NOTECENTRE_PARAM].getValue());
+                noteGen.setNoteRange(params[NOTERANGE_PARAM].getValue());
 
 				// if gateIn transitions to high generate a new value
 				unsigned randomNote = noteGen.generate();
@@ -128,8 +128,8 @@ struct CvGeneratorWidget : ModuleWidget {
 		addChild(createLightCentered<MediumLight<GreenLight>>(mm2px(Vec(9.0, 21.35)), module, CvGenerator::RUNNING_LIGHT));
 
 		addParam(createParamCentered<RoundBlackSnapKnob>(mm2px(Vec(25.4, 39.551)), module, CvGenerator::KEY_PARAM));
-		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(14.273, 58.756)), module, CvGenerator::RANGEMIN_PARAM));
-		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(35.683, 58.756)), module, CvGenerator::RANGEMAX_PARAM));
+		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(14.273, 58.756)), module, CvGenerator::NOTECENTRE_PARAM));
+		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(35.683, 58.756)), module, CvGenerator::NOTERANGE_PARAM));
         addParam(createParamCentered<CKSS>(mm2px(Vec(41.0, 40.7)), module, CvGenerator::MAJMIN_PARAM));
         addParam(createParamCentered<CKSSThree>(mm2px(Vec(9.0, 40.7)), module, CvGenerator::SHARPFLAT_PARAM));
 

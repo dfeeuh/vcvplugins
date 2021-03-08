@@ -1,7 +1,5 @@
 #pragma once
 
-#include <algorithm>
-
 #define NUM_NOTES_IN_SCALE 7
 #define NUM_NOTES_CHROMATIC 12
 
@@ -33,11 +31,11 @@ public:
     } ACCIDENTAL;
 
 private:
-    unsigned upper;
-    unsigned lower;
+    unsigned noteRange;
+    unsigned centreNote;
 
-    uint16_t start_state;
-	uint16_t lfsr;
+    unsigned start_state;
+	unsigned lfsr;
 
 	const unsigned keyMapBasis[NUM_NOTES_IN_SCALE] = {0, 2, 4, 5, 7, 9, 11};
 	unsigned keyMapChrom[NUM_NOTES_CHROMATIC];
@@ -53,11 +51,13 @@ public:
     KEY getKey(int note, bool isMinor, ACCIDENTAL accidental);
 
 	unsigned binarySearch(unsigned *array, unsigned len, unsigned note);
-    void setLower(unsigned x);
-    void setUpper(unsigned x);
+
+    void setNoteOffset(unsigned offset);
+    void setNoteRange(unsigned range);
+    void mapToRange(unsigned &note);
+
     unsigned snapToKey(unsigned noteIn);    
 	unsigned generate(void);
     float noteToCv(unsigned note);
     void setKey(KEY newKeyId);
-	
 };

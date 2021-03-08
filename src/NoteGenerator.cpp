@@ -1,7 +1,7 @@
 #include "NoteGenerator.hpp"
 #include <algorithm>
 
-NoteGenerator::NoteGenerator() : upper{0x72}, lower{60}, start_state{0xACE1u}, currentKey{NONE} {
+NoteGenerator::NoteGenerator() : noteRange{0x7F}, centreNote{64}, start_state{0xACE1u}, currentKey{NONE} {
     lfsr = start_state;
 }
 
@@ -91,14 +91,15 @@ unsigned NoteGenerator::binarySearch(unsigned *array, unsigned len, unsigned not
     return closest;
 }
 
-void NoteGenerator::setLower(unsigned x)
+void NoteGenerator::setNoteOffset(unsigned offset)
 {
-    lower = std::min(x, upper-NUM_NOTES_CHROMATIC);
+    centreNote = offset > 127 ? 127 : offset;
 }
 
-void NoteGenerator::setUpper(unsigned x)
+void NoteGenerator::setNoteRange(unsigned range)
 {
-    upper = std::max(x, lower+NUM_NOTES_CHROMATIC);
+    noteRange = range > 127 ? 127 : range;
+    if(noteRange == 0) noteRange = 1;
 }
 
 unsigned NoteGenerator::snapToKey(unsigned noteIn)
@@ -114,6 +115,13 @@ unsigned NoteGenerator::snapToKey(unsigned noteIn)
 
     return (note + octave * NUM_NOTES_CHROMATIC);
 }	
+
+void NoteGenerator::mapToRange(unsigned &note)
+{
+    float flNote = (note * 1.f) / 128.f;
+    flNote *= noteRange / 2;
+    note = (unsigned)flNote + centreNote;
+}
 
 // Run a linear feedback shift register
 // From https://en.wikipedia.org/wiki/Linear-feedback_shift_register#Galois_LFSRs
@@ -136,17 +144,7 @@ unsigned NoteGenerator::generate(void)
     unsigned noteout = lfsr & 0xFF;
     noteout = ((noteout += 1) >> 1);
 
-    while (noteout > upper)
-    {
-        // Subtract an octave. Upper can never be less than NUM_NOTES_CHROMATIC
-        noteout -= NUM_NOTES_CHROMATIC;
-    }
-
-    while (noteout < lower)
-    {
-        // Lower can never be greater than 115
-        noteout += NUM_NOTES_CHROMATIC;
-    }
+    mapToRange(noteout);
 
     return snapToKey(noteout);
 } 

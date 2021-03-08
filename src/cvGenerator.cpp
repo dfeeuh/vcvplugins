@@ -60,12 +60,12 @@ struct CvGenerator : Module {
 		
 		if (running) {
     		bool gateIn = false;
+            bool bNewNote = false;
 
 			if (inputs[EXCLOC_INPUT].isConnected()) {
 				// External clock
-				clockTrigger.process(inputs[EXCLOC_INPUT].getVoltage());
+				bNewNote = clockTrigger.process(inputs[EXCLOC_INPUT].getVoltage());
 				gateIn = clockTrigger.isHigh();
-                phase = gateIn ? 0.0f : 1.0f;
 			}
 			else {
 				// Internal clock
@@ -73,12 +73,13 @@ struct CvGenerator : Module {
 				phase += clockTime * args.sampleTime;	
 				if (phase >= 1.f)
 				{
-					gateIn = true;
+                    bNewNote = true;
 					phase = 0.f;
 				}
+                gateIn = (phase < 0.5f);
 			}
 		
-			if (gateIn) {
+			if (bNewNote) {
                 // Only check input parameters change on a new gate event.
                 noteGen.setKey(noteGen.getKey(
                         params[KEY_PARAM].getValue(), 
@@ -95,9 +96,7 @@ struct CvGenerator : Module {
 			}  
 
 			// TODO - manipulate durations by changing the thresholds!
-
-			// TODO Oops - What happens for external clock? There is no phase increment!
-			outputs[GATE_OUTPUT].setVoltage((phase < 0.5f) ? 10.f : 0);
+			outputs[GATE_OUTPUT].setVoltage(gateIn ? 10.f : 0);
 			outputs[CV_OUTPUT].setVoltage(cv_out);
 
 			// Blink light at 1Hz	
@@ -106,6 +105,7 @@ struct CvGenerator : Module {
 		}
         else
         {
+			outputs[CV_OUTPUT].setVoltage(0);
    			outputs[GATE_OUTPUT].setVoltage(0);
             lights[BLINK_LIGHT].setBrightness(0.f);
             lights[RUNNING_LIGHT].setBrightness(0.f);

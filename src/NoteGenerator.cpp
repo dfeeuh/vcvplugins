@@ -119,21 +119,22 @@ unsigned NoteGenerator::snapToKey(unsigned noteIn)
 void NoteGenerator::mapToRange(unsigned &note)
 {
     // Calculate upper and lower boundaries
-    float upper = centreNote + (float)noteRange * 0.5f;
-    float lower = upper - noteRange;
+    unsigned upper = centreNote + noteRange/2;
+    unsigned lower = upper - noteRange;
     
-    unsigned ui32upper = (upper > 127.f) ? 127.f : (unsigned)upper;
-    unsigned ui32lower = (lower < 0.f) ? 0 : (unsigned)lower;
+    // Bound within MIDI note range
+    upper = (upper > 127) ? 127 : upper;
+    lower = (lower < 0) ? 0 : lower;
 
-    // Wrap into the correct octave
-    while (note > ui32upper)
+    // Wrap input by octave
+    while (note > upper)
         note -= NUM_NOTES_CHROMATIC;
 
-    while (note < ui32lower)
+    while (note < lower)
         note += NUM_NOTES_CHROMATIC;
 
     // Clamp into min max if we've overshot
-    if (note > ui32upper) note = ui32upper;
+    if (note > upper) note = upper;
 }
 
 // Run a linear feedback shift register

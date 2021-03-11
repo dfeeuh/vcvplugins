@@ -1,0 +1,29 @@
+{
+  "slug": "MyPlugin",
+  "name": "MyPlugin",
+  "version": "1.0.0",
+  "license": "CC0-1.0",
+  "brand": "MyPlugin",
+  "author": "",
+  "authorEmail": "",
+  "authorUrl": "",
+  "pluginUrl": "",
+  "manualUrl": "",
+  "sourceUrl": "",
+  "donateUrl": "",
+  "changelogUrl": "",
+  "modules": [
+    {
+      "slug": "CvGenerator",
+      "name": "CvGenerator",
+      "description": "",
+      "tags": []
+    },
+    {
+      "slug": "Clock",
+      "name": "Clock",
+      "description": "",
+      "tags": []
+    }
+  ]
+}

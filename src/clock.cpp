@@ -74,22 +74,22 @@ struct DisplayWidget : TransparentWidget {
     }
 };
 
-struct ClockBpmKnob : RoundBlackKnob
+struct ClockCtrlKnob : RoundBlackKnob
 {
-    float *bpm = nullptr;
+    float *rate = nullptr;
 
     void bind(float *x)
     {
-        bpm = x;
+        rate = x;
     }
 
     void onChange(const event::Change& e) override
     {
         RoundBlackKnob::onChange(e);
 
-        if (bpm != nullptr)
+        if (rate != nullptr)
         {
-            *bpm = std::pow(2.f, paramQuantity->getValue());
+            *rate = std::pow(2.f, paramQuantity->getValue());
         }
     }
 };
@@ -101,7 +101,7 @@ struct ClockWidget : ModuleWidget {
 		setPanel(APP->window->loadSvg(asset::plugin(pluginInstance, "res/Clock.svg")));
 
         // Use a custom knob to bind value
-        ClockBpmKnob *bpmKnob = createParamCentered<ClockBpmKnob>(mm2px(Vec(15.24, 46.063)), module, Clock::RATE_PARAM);
+        ClockCtrlKnob *bpmKnob = createParamCentered<ClockCtrlKnob>(mm2px(Vec(15.24, 46.063)), module, Clock::RATE_PARAM);
 		addParam(bpmKnob);
         
         // DISPLAY 

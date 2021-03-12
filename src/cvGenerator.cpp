@@ -45,7 +45,10 @@ struct CvGenerator : Module {
 		config(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_LIGHTS);
 	    configParam(CLOCK_PARAM, -2.f, 6.f, 2.f, "Clock tempo", " bpm", 2.f, 60.f);
 		configParam(RUN_PARAM, 0.f, 1.f, 0.f);
-        configParam(KEY_PARAM, 0.f, 7.f, 0.f, "Key");
+        configParam(KEY_PARAM, 
+            (float)NoteGenerator::KEY_BASE::CHROMATIC, 
+            (float)NoteGenerator::KEY_BASE::G, 
+            (float)NoteGenerator::KEY_BASE::A, "Key");
 		configParam(NOTECENTRE_PARAM, 0.f, 127.f, 64.f, "Key Offset");
 		configParam(NOTERANGE_PARAM, 1.f, 127.f, 64.f, "Key Range");
         configParam(MAJMIN_PARAM, 0.f, 1.f, 1.f, "Major Minor");
@@ -80,13 +83,7 @@ struct CvGenerator : Module {
 			}
 		
 			if (bNewNote) {
-                // Only check input parameters change on a new gate event.
-                noteGen.setKey(noteGen.getKey(
-                        params[KEY_PARAM].getValue(), 
-                        params[MAJMIN_PARAM].getValue() == 1.f ? true : false, 
-                        (NoteGenerator::ACCIDENTAL)params[SHARPFLAT_PARAM].getValue()
-                        ));
-                
+                // Key parameters are handled by their controls below                
                 noteGen.setNoteOffset((unsigned)params[NOTECENTRE_PARAM].getValue());
                 noteGen.setNoteRange((unsigned)params[NOTERANGE_PARAM].getValue());
 
@@ -113,6 +110,52 @@ struct CvGenerator : Module {
 	}
 };
 
+// Templated class to abstract the handling of updateKey
+template <typename T>
+struct KeyControl { 
+private:
+    NoteGenerator *noteGen_ = nullptr;
+
+public:
+    // Bind the noteGenerator object with the UI
+    void setNoteGenerator(NoteGenerator *ng) { noteGen_ = ng; }
+
+    void updateKey(T val) {
+        if (noteGen_ != nullptr)
+            noteGen_->updateKey(val);
+    }
+};
+
+// Override onChange to update the key based on the value of RoundBlackSnapKnob
+struct KeyControlKnob : RoundBlackSnapKnob, KeyControl<NoteGenerator::KEY_BASE> {
+ 
+    void onChange(const event::Change& e) override {
+        RoundBlackSnapKnob::onChange(e);
+
+        updateKey((NoteGenerator::KEY_BASE)paramQuantity->getValue());
+    }
+};
+
+// Override onChange to update the key based on the value of CKSS switch
+struct MajorMinorSwitch : CKSS, KeyControl<bool> {
+
+    void onChange(const event::Change& e) override {
+        CKSS::onChange(e);
+
+        updateKey(paramQuantity->getValue() == 1.0f ? true : false);
+    }
+};
+
+// Override onChange to update the key based on the value of CKSSThree switch
+struct AccidentalSwitch : CKSSThree, KeyControl<NoteGenerator::ACCIDENTAL> {
+
+    void onChange(const event::Change& e) override {
+        CKSSThree::onChange(e);
+
+        updateKey((NoteGenerator::ACCIDENTAL)paramQuantity->getValue());
+    }
+};
+
 struct CvGeneratorWidget : ModuleWidget {
 	CvGeneratorWidget(CvGenerator* module) {
 		setModule(module);
@@ -127,11 +170,21 @@ struct CvGeneratorWidget : ModuleWidget {
 		addParam(createParamCentered<LEDButton>(mm2px(Vec(9.0, 21.35)), module, CvGenerator::RUN_PARAM));
 		addChild(createLightCentered<MediumLight<GreenLight>>(mm2px(Vec(9.0, 21.35)), module, CvGenerator::RUNNING_LIGHT));
 
-		addParam(createParamCentered<RoundBlackSnapKnob>(mm2px(Vec(25.4, 39.551)), module, CvGenerator::KEY_PARAM));
+        // Musical Key control parameters
+        auto keyCtrl = createParamCentered<KeyControlKnob>(mm2px(Vec(25.4, 39.551)), module, CvGenerator::KEY_PARAM);
+        keyCtrl->setNoteGenerator(&module->noteGen);
+		addParam(keyCtrl);
+
+        auto majminSw = createParamCentered<MajorMinorSwitch>(mm2px(Vec(41.0, 40.7)), module, CvGenerator::MAJMIN_PARAM);
+        majminSw->setNoteGenerator(&module->noteGen);
+        addParam(majminSw);
+
+        auto accSw = createParamCentered<AccidentalSwitch>(mm2px(Vec(9.0, 40.7)), module, CvGenerator::SHARPFLAT_PARAM);
+        accSw->setNoteGenerator(&module->noteGen);
+        addParam(accSw);
+
 		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(14.273, 58.756)), module, CvGenerator::NOTECENTRE_PARAM));
 		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(35.683, 58.756)), module, CvGenerator::NOTERANGE_PARAM));
-        addParam(createParamCentered<CKSS>(mm2px(Vec(41.0, 40.7)), module, CvGenerator::MAJMIN_PARAM));
-        addParam(createParamCentered<CKSSThree>(mm2px(Vec(9.0, 40.7)), module, CvGenerator::SHARPFLAT_PARAM));
 
 		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(14.172, 106.832)), module, CvGenerator::EXCLOC_INPUT));
 

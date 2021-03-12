@@ -6,6 +6,11 @@
 class NoteGenerator
 {
 public:
+    typedef enum keyBase {
+        CHROMATIC=0,
+        A, B, C, D, E, F, G, NUM_BASE_KEYS
+    } KEY_BASE;
+
     typedef enum keyIds {
         NONE=-1,
         C_MAG=0,
@@ -40,15 +45,18 @@ private:
 	const unsigned keyMapBasis[NUM_NOTES_IN_SCALE] = {0, 2, 4, 5, 7, 9, 11};
 	unsigned keyMapChrom[NUM_NOTES_CHROMATIC];
 	KEY currentKey;
+    KEY_BASE keyBase_;
+    ACCIDENTAL accidental_;
+    bool isMinor_;
 
 public:
     NoteGenerator();
 
-    // Given the parameters, converted to a KEY type
-    // note: -1 = none
-    // isMinor: if true, return the minor (major key down three semitones)
-    // accidental: -1 = flat, 0 = natural; +1 = sharp
-    KEY getKey(int note, bool isMinor, ACCIDENTAL accidental);
+    void updateKey();
+    
+    void updateKey(KEY_BASE note);
+    void updateKey(bool isMinor);
+    void updateKey(ACCIDENTAL accidental);
 
 	unsigned binarySearch(unsigned *array, unsigned len, unsigned note);
 
@@ -59,5 +67,5 @@ public:
     unsigned snapToKey(unsigned noteIn);    
 	unsigned generate(void);
     float noteToCv(unsigned note);
-    void setKey(KEY newKeyId);
+    void updateNoteMap();
 };

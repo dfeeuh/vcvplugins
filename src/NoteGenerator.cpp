@@ -1,62 +1,41 @@
 #include "NoteGenerator.hpp"
+#include <logger.hpp>
 #include <algorithm>
 
-NoteGenerator::NoteGenerator() : noteRange{0x7F}, centreNote{64}, start_state{0xACE1u}, currentKey{NONE} {
+NoteGenerator::NoteGenerator() : 
+    noteRange{0x7F}, 
+    centreNote{64}, 
+    start_state{0xACE1u}, 
+    currentKey{NONE},
+    keyBase_{CHROMATIC},
+    accidental_{NATURAL},
+    isMinor_{false}
+{
     lfsr = start_state;
 }
 
 // Given the parameters, converted to a KEY type
 // note: -1 = none
-// isMinor: if true, return the minor (major key down three semitones)
+// isMinor_: if true, return the minor (major key down three semitones)
 // accidental: -1 = flat, 0 = natural; +1 = sharp
-NoteGenerator::KEY NoteGenerator::getKey(int note, bool isMinor, ACCIDENTAL accidental)
+void NoteGenerator::updateKey()
 {
-    KEY key = NONE;
-    switch(note)
+    constexpr KEY majorkeys[NUM_BASE_KEYS] = {NONE, A_MAG, B_MAG, C_MAG, D_MAG, E_MAG, F_MAG, G_MAG};
+    constexpr KEY minorkeys[NUM_BASE_KEYS] = {NONE, Fs_MAG, Gs_MAG, A_MAG, B_MAG, Cs_MAG, D_MAG, E_MAG};
+
+    if (isMinor_)
+        currentKey = minorkeys[keyBase_];
+    else
+        currentKey = majorkeys[keyBase_];
+
+    if (currentKey != NONE)
     {
-        case -1:
-            return NONE;
-            break;
-        case 0:
-            key = A_MAG;
-            if (isMinor)
-                key = Fs_MAG;
-            break;
-        case 1:
-            key = B_MAG;
-            if (isMinor)
-                key = Gs_MAG;
-            break;
-        case 2:
-            key = C_MAG;
-            if (isMinor)
-                key = A_MAG;
-            break;
-        case 3:
-            key = D_MAG;
-            if (isMinor)
-                key = B_MAG;
-            break;
-        case 4:
-            key = E_MAG;
-            if (isMinor)
-                key = Cs_MAG;
-            break;
-        case 5:
-            key = F_MAG;
-            if (isMinor)
-                key = D_MAG;
-            break;
-        case 6:
-            key = G_MAG;
-            if (isMinor)
-                key = E_MAG;
-            break;
-        default:
-            return NONE;
+        currentKey = (KEY)((int)currentKey + (int)accidental_);
+        updateNoteMap();
     }
-    // Ugly!
-    return (KEY)((int)key + (int)accidental);
+
+    // Print some logging here
+    DEBUG("Key change - note [%d], accidental [%d], isMinor [%d]. Key [%d]\n", keyBase_, accidental_, isMinor_, (int)currentKey);
 }
 
 unsigned NoteGenerator::binarySearch(unsigned *array, unsigned len, unsigned note)
@@ -118,23 +97,26 @@ unsigned NoteGenerator::snapToKey(unsigned noteIn)
 
 void NoteGenerator::mapToRange(unsigned &note)
 {
-    // Calculate upper and lower boundaries
-    unsigned upper = centreNote + noteRange/2;
-    unsigned lower = upper - noteRange;
-    
-    // Bound within MIDI note range
+    int noteTmp = (int)note;
+    // Calculate upper and lower boundaries within MIDI boundaries
+    int upper = (int)centreNote + noteRange/2;
     upper = (upper > 127) ? 127 : upper;
+
+    // Careful with subtraction
+    int lower = (int)upper - noteRange;    
     lower = (lower < 0) ? 0 : lower;
 
     // Wrap input by octave
-    while (note > upper)
-        note -= NUM_NOTES_CHROMATIC;
+    while (noteTmp > upper)
+        noteTmp -= NUM_NOTES_CHROMATIC;
 
-    while (note < lower)
-        note += NUM_NOTES_CHROMATIC;
+    while (noteTmp < lower)
+        noteTmp += NUM_NOTES_CHROMATIC;
 
     // Clamp into min max if we've overshot
-    if (note > upper) note = upper;
+    if (noteTmp > upper) noteTmp = upper;
+
+    note = noteTmp;
 }
 
 // Run a linear feedback shift register
@@ -156,7 +138,7 @@ unsigned NoteGenerator::generate(void)
     // Generate the number in Qx.1 format to get a half.
     // Then round. Not sure it makes a big difference.
     unsigned noteout = lfsr & 0xFF;
-    noteout = ((noteout += 1) >> 1);
+    noteout = ((noteout + 1) >> 1);
 
     mapToRange(noteout);
 
@@ -168,19 +150,16 @@ float NoteGenerator::noteToCv(unsigned note)
     return (note - 60.0f) / 12.f;
 }
 
-void NoteGenerator::setKey(KEY newKeyId)
+void NoteGenerator::updateNoteMap()
 {
     unsigned workspace[NUM_NOTES_IN_SCALE];
 
-    currentKey = newKeyId;
-    if (newKeyId == NONE)
-        return; 
 
     // Everytime a new key is selected, generate a new key map
     for (unsigned i=0; i<NUM_NOTES_IN_SCALE; i++)
     {
         // Key = (C major + new key root note) modulo 12
-        workspace[i] = (newKeyId + keyMapBasis[i]) % 12;
+        workspace[i] = (currentKey + keyMapBasis[i]) % 12;
     }
 
     // Sort to make all notes in order
@@ -193,3 +172,17 @@ void NoteGenerator::setKey(KEY newKeyId)
     }		
 }
 
+void NoteGenerator::updateKey(KEY_BASE note) {
+    keyBase_ = note;
+    updateKey();
+}
+
+void NoteGenerator::updateKey(bool isMinor) {
+    isMinor_ = isMinor;
+    updateKey();
+}
+
+void NoteGenerator::updateKey(ACCIDENTAL accidental) {
+    accidental_ = accidental;
+    updateKey();
+}

@@ -142,7 +142,7 @@ struct MajorMinorSwitch : CKSS, KeyControl<bool> {
     void onChange(const event::Change& e) override {
         CKSS::onChange(e);
 
-        updateKey(paramQuantity->getValue() == 1.0f ? true : false);
+        updateKey(paramQuantity->getValue() == 1.0f ? false : true);
     }
 };
 

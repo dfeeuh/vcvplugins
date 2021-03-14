@@ -1,7 +1,39 @@
 #pragma once
+#include <chrono>
+#include <cstdint>
 
 #define NUM_NOTES_IN_SCALE 7
 #define NUM_NOTES_CHROMATIC 12
+
+// a Galois linear feedback shift register initialised from the clock time
+class LFSR {
+private:
+    uint16_t lfsr;
+
+public:
+    LFSR() {
+        // Seed the LFSR with the current clock
+        auto t = (std::chrono::system_clock::now()).time_since_epoch();
+        lfsr = (uint16_t)(t.count() & 0xFFFF);
+    }
+
+    // From https://en.wikipedia.org/wiki/Linear-feedback_shift_register#Galois_LFSRs
+    uint16_t generate(void)
+    {
+    #ifndef LEFT
+        unsigned lsb = lfsr & 1u;  /* Get LSB (i.e., the output bit). */
+        lfsr >>= 1;                /* Shift register */
+        if (lsb)                   /* If the output bit is 1, */
+            lfsr ^= 0xB400u;       /*  apply toggle mask. */
+    #else
+        unsigned msb = (int16_t) lfsr < 0;   /* Get MSB (i.e., the output bit). */
+        lfsr <<= 1;                          /* Shift register */
+        if (msb)                             /* If the output bit is 1, */
+            lfsr ^= 0x002Du;                 /*  apply toggle mask. */
+    #endif    
+        return lfsr;
+    }
+};
 
 class NoteGenerator
 {
@@ -36,11 +68,9 @@ public:
     } ACCIDENTAL;
 
 private:
+	LFSR lfsr;
     unsigned noteRange;
     unsigned centreNote;
-
-    unsigned start_state;
-	unsigned lfsr;
 
 	const unsigned keyMapBasis[NUM_NOTES_IN_SCALE] = {0, 2, 4, 5, 7, 9, 11};
 	unsigned keyMapChrom[NUM_NOTES_CHROMATIC];
@@ -65,7 +95,8 @@ public:
     void mapToRange(unsigned &note);
 
     unsigned snapToKey(unsigned noteIn);    
-	unsigned generate(void);
+	unsigned generatePitch();
+    unsigned generateVelocity();
     float noteToCv(unsigned note);
     void updateNoteMap();
 };

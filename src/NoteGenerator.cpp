@@ -5,13 +5,11 @@
 NoteGenerator::NoteGenerator() : 
     noteRange{0x7F}, 
     centreNote{64}, 
-    start_state{0xACE1u}, 
     currentKey{NONE},
     keyBase_{CHROMATIC},
     accidental_{NATURAL},
     isMinor_{false}
 {
-    lfsr = start_state;
 }
 
 // Given the parameters, converted to a KEY type
@@ -35,7 +33,7 @@ void NoteGenerator::updateKey()
     }
 
     // Print some logging here
-    DEBUG("Key change - note [%d], accidental [%d], isMinor [%d]. Key [%d]\n", keyBase_, accidental_, isMinor_, (int)currentKey);
+    //DEBUG("Key change - note [%d], accidental [%d], isMinor [%d]. Key [%d]\n", keyBase_, accidental_, isMinor_, (int)currentKey);
 }
 
 unsigned NoteGenerator::binarySearch(unsigned *array, unsigned len, unsigned note)
@@ -121,29 +119,23 @@ void NoteGenerator::mapToRange(unsigned &note)
 
 // Run a linear feedback shift register
 // From https://en.wikipedia.org/wiki/Linear-feedback_shift_register#Galois_LFSRs
-unsigned NoteGenerator::generate(void)
+unsigned NoteGenerator::generatePitch()
 {
-#ifndef LEFT
-    unsigned lsb = lfsr & 1u;  /* Get LSB (i.e., the output bit). */
-    lfsr >>= 1;                /* Shift register */
-    if (lsb)                   /* If the output bit is 1, */
-        lfsr ^= 0xB400u;       /*  apply toggle mask. */
-#else
-    unsigned msb = (int16_t) lfsr < 0;   /* Get MSB (i.e., the output bit). */
-    lfsr <<= 1;                          /* Shift register */
-    if (msb)                             /* If the output bit is 1, */
-        lfsr ^= 0x002Du;                 /*  apply toggle mask. */
-#endif
-
     // Generate the number in Qx.1 format to get a half.
     // Then round. Not sure it makes a big difference.
-    unsigned noteout = lfsr & 0xFF;
+    unsigned noteout = lfsr.generate() & 0xFF;
     noteout = ((noteout + 1) >> 1);
 
     mapToRange(noteout);
 
     return snapToKey(noteout);
 } 
+
+// Generate a random value between 0 and 127
+unsigned NoteGenerator::generateVelocity()
+{
+    return lfsr.generate() & 0x7F;
+}
 
 float NoteGenerator::noteToCv(unsigned note)
 {

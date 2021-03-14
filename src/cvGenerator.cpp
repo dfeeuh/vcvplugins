@@ -1,5 +1,6 @@
 #include "NoteGenerator.hpp"
 #include "plugin.hpp"
+#include <algorithm>
 
 struct CvGenerator : Module {
 	enum ParamIds {
@@ -10,6 +11,8 @@ struct CvGenerator : Module {
 		NOTERANGE_PARAM,
         MAJMIN_PARAM,
         SHARPFLAT_PARAM,
+        LEVELQUANTISE_PARAM,
+//        LEVELRANGE_PARAM,
 		NUM_PARAMS
 	};
 	enum InputIds {
@@ -18,7 +21,8 @@ struct CvGenerator : Module {
 	};
 	enum OutputIds {
 		GATE_OUTPUT,
-		CV_OUTPUT,
+		CV_PITCH_OUTPUT,
+        CV_LEVEL_OUTPUT,
 		NUM_OUTPUTS
 	};
 	enum LightIds {
@@ -36,7 +40,8 @@ struct CvGenerator : Module {
 
 	/** Phase of internal LFO */
 	float phase = 0.f;
-	float cv_out;
+	float cv_pitch;
+    float cv_level;
 
 
 	CvGenerator() :    
@@ -45,6 +50,8 @@ struct CvGenerator : Module {
 		config(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_LIGHTS);
 	    configParam(CLOCK_PARAM, -2.f, 6.f, 2.f, "Clock tempo", " bpm", 2.f, 60.f);
 		configParam(RUN_PARAM, 0.f, 1.f, 0.f);
+
+        // CV Pitch controls
         configParam(KEY_PARAM, 
             (float)NoteGenerator::KEY_BASE::CHROMATIC, 
             (float)NoteGenerator::KEY_BASE::G, 
@@ -53,6 +60,11 @@ struct CvGenerator : Module {
 		configParam(NOTERANGE_PARAM, 1.f, 127.f, 64.f, "Key Range");
         configParam(MAJMIN_PARAM, 0.f, 1.f, 1.f, "Major Minor");
         configParam(SHARPFLAT_PARAM, -1.0, 1.f, 0.f, "Sharp Flat Natural");
+
+        // CV Level controls: 0 - none, 1 - on/off, 2 - 4 levels
+ 		configParam(LEVELQUANTISE_PARAM, 0.f, 3.f, 0.f, "Level quantize");
+         // Level range is Median +/- Range
+		//configParam(LEVELRANGE_PARAM, 0.f, 5.f, 5.f, "Level Range");
 	}
 
 	void process(const ProcessArgs& args) override {
@@ -88,13 +100,29 @@ struct CvGenerator : Module {
                 noteGen.setNoteRange((unsigned)params[NOTERANGE_PARAM].getValue());
 
 				// if gateIn transitions to high generate a new value
-				unsigned randomNote = noteGen.generate();
-				cv_out = noteGen.noteToCv(randomNote);
+				unsigned randomNote = noteGen.generatePitch();
+				cv_pitch = noteGen.noteToCv(randomNote);
+
+                float levelQuant = params[LEVELQUANTISE_PARAM].getValue();
+                //float levelQuant = params[LEVELRANGE_PARAM].getValue();
+
+                if (levelQuant == 0)
+                    // No quantisation
+                    cv_level = 10.f;
+                else
+                {
+                    unsigned mask = (1 << (unsigned)(levelQuant)) - 1 ;
+                    unsigned lvl = noteGen.generateVelocity() & mask;
+                    // Snap to 2^levelQuant
+                    cv_level = 10.f * (float)lvl / mask;
+                    //DEBUG("CV level %f", cv_level);
+                }
 			}  
 
 			// TODO - manipulate durations by changing the thresholds!
 			outputs[GATE_OUTPUT].setVoltage(gateIn ? 10.f : 0);
-			outputs[CV_OUTPUT].setVoltage(cv_out);
+			outputs[CV_PITCH_OUTPUT].setVoltage(cv_pitch);
+            outputs[CV_LEVEL_OUTPUT].setVoltage(cv_level);
 
 			// Blink light at 1Hz	
 			lights[BLINK_LIGHT].setBrightness((phase < 0.5) ? 1.f : 0.f);
@@ -102,8 +130,9 @@ struct CvGenerator : Module {
 		}
         else
         {
-			outputs[CV_OUTPUT].setVoltage(0);
+			outputs[CV_PITCH_OUTPUT].setVoltage(0);
    			outputs[GATE_OUTPUT].setVoltage(0);
+            outputs[CV_LEVEL_OUTPUT].setVoltage(0);
             lights[BLINK_LIGHT].setBrightness(0.f);
             lights[RUNNING_LIGHT].setBrightness(0.f);
         }	    
@@ -186,10 +215,14 @@ struct CvGeneratorWidget : ModuleWidget {
 		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(14.273, 58.756)), module, CvGenerator::NOTECENTRE_PARAM));
 		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(35.683, 58.756)), module, CvGenerator::NOTERANGE_PARAM));
 
+        addParam(createParamCentered<RoundBlackSnapKnob>(mm2px(Vec(56.688, 39.551)), module, CvGenerator::LEVELQUANTISE_PARAM));
+        //addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(56.688, 58.756)), module, CvGenerator::LEVELRANGE_PARAM));
+		addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(57.4, 83.234)), module, CvGenerator::CV_LEVEL_OUTPUT));
+
 		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(14.172, 106.832)), module, CvGenerator::EXCLOC_INPUT));
 
 		addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(35.683, 83.234)), module, CvGenerator::GATE_OUTPUT));
-		addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(35.786, 107.579)), module, CvGenerator::CV_OUTPUT));
+		addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(35.786, 107.579)), module, CvGenerator::CV_PITCH_OUTPUT));
 
 		addChild(createLightCentered<MediumLight<RedLight>>(mm2px(Vec(25.4, 21.356)), module, CvGenerator::BLINK_LIGHT));
 	}

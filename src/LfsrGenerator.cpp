@@ -113,7 +113,7 @@ struct LfsrGenerator : Module {
                 noteGen.setNoteRange((unsigned)params[NOTERANGE_PARAM].getValue());
 
                 unsigned randomNote = noteGen.generatePitch();
-                cv_pitch = noteGen.noteToCv(randomNote);
+                cv_pitch = (randomNote - 60.0f) / 12.f;
 
                 float levelQuant = params[LEVELQUANTISE_PARAM].getValue();
 

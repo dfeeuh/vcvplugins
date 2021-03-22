@@ -72,9 +72,12 @@ private:
     unsigned noteRange;
     unsigned centreNote;
 
-	const unsigned keyMapBasis[NUM_NOTES_IN_SCALE] = {0, 2, 4, 5, 7, 9, 11};
-	unsigned keyMapChrom[NUM_NOTES_CHROMATIC];
+    // DANGER! these are used in the audio thread and updated in the GUI
+    // by updateKey
+	unsigned keyMap[NUM_NOTES_CHROMATIC];
 	KEY currentKey;
+
+    // Local to GUI thread only
     KEY_BASE keyBase_;
     ACCIDENTAL accidental_;
     bool isMinor_;
@@ -83,20 +86,13 @@ public:
     NoteGenerator();
 
     void updateKey();
-    
     void updateKey(KEY_BASE note);
     void updateKey(bool isMinor);
     void updateKey(ACCIDENTAL accidental);
 
-	unsigned binarySearch(unsigned *array, unsigned len, unsigned note);
-
     void setNoteOffset(unsigned offset);
     void setNoteRange(unsigned range);
-    void mapToRange(unsigned &note);
 
-    unsigned snapToKey(unsigned noteIn);    
 	unsigned generatePitch();
     unsigned generateVelocity();
-    float noteToCv(unsigned note);
-    void updateNoteMap();
 };

@@ -42,9 +42,12 @@ struct CvGenerator : Module {
     float cv_pitch;
     float cv_level;
 
+    const float clkDivInc = 1.f;
+    float clkDiv;
+
 
     CvGenerator() :    
-        phase{0.f}
+        phase{0.f}, clkDiv{0.f}
     {
         config(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_LIGHTS);
         configParam(CLOCK_PARAM, -2.f, 6.f, 2.f, "Clock tempo", " bpm", 2.f, 60.f);
@@ -70,6 +73,7 @@ struct CvGenerator : Module {
         // Run
         if (runningTrigger.process(params[RUN_PARAM].getValue())) {
             running = !running;
+            clkDiv = 0.f;
         }
         
         if (running) {
@@ -87,11 +91,19 @@ struct CvGenerator : Module {
                 phase += clockTime * args.sampleTime;    
                 if (phase >= 1.f)
                 {
-                    bNewNote = true;
+                    clkDiv += clkDivInc;
+                    if (clkDiv >= 1.f)
+                    {
+                        bNewNote = true;
+                        clkDiv = 0;
+                    }
+                                        
                     phase = 0.f;
-                    
                 }
-                gateIn = (phase < 0.5f);
+                if (clkDivInc >= 1.0f)
+                    gateIn = (phase < 0.5f);
+                else
+                    gateIn = (clkDiv < 0.5f);
             }
         
             if (bNewNote) {
@@ -113,6 +125,8 @@ struct CvGenerator : Module {
                     unsigned lvl = noteGen.generateVelocity() & mask;
                     // Snap to 2^levelQuant
                     cv_level *= (float)lvl / mask;
+
+                    //DEBUG("CV_LEVEL: %f", cv_level);
                 }
             }  
 
@@ -192,12 +206,12 @@ struct CvGeneratorWidget : ModuleWidget {
         addChild(createWidget<ScrewSilver>(Vec(RACK_GRID_WIDTH, RACK_GRID_HEIGHT - RACK_GRID_WIDTH)));
         addChild(createWidget<ScrewSilver>(Vec(box.size.x - 2 * RACK_GRID_WIDTH, RACK_GRID_HEIGHT - RACK_GRID_WIDTH)));
 
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(14.273, 83.552)), module, CvGenerator::CLOCK_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(14.17, 95.54)), module, CvGenerator::CLOCK_PARAM));
         addParam(createParamCentered<LEDButton>(mm2px(Vec(9.0, 21.35)), module, CvGenerator::RUN_PARAM));
-        addChild(createLightCentered<MediumLight<GreenLight>>(mm2px(Vec(9.0, 21.35)), module, CvGenerator::RUNNING_LIGHT));
+        addChild(createLightCentered<MediumLight<GreenLight>>(mm2px(Vec(9.1, 21.35)), module, CvGenerator::RUNNING_LIGHT));
 
         // Musical Key control parameters
-        auto keyCtrl = createParamCentered<KeyControlKnob>(mm2px(Vec(25.4, 39.551)), module, CvGenerator::KEY_PARAM);
+        auto keyCtrl = createParamCentered<KeyControlKnob>(mm2px(Vec(25.4, 41.67)), module, CvGenerator::KEY_PARAM);
         keyCtrl->setNoteGenerator(&module->noteGen);
         addParam(keyCtrl);
 
@@ -205,23 +219,23 @@ struct CvGeneratorWidget : ModuleWidget {
         majminSw->setNoteGenerator(&module->noteGen);
         addParam(majminSw);
 
-        auto accSw = createParamCentered<AccidentalSwitch>(mm2px(Vec(9.0, 40.7)), module, CvGenerator::SHARPFLAT_PARAM);
+        auto accSw = createParamCentered<AccidentalSwitch>(mm2px(Vec(8.94, 40.72)), module, CvGenerator::SHARPFLAT_PARAM);
         accSw->setNoteGenerator(&module->noteGen);
         addParam(accSw);
 
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(14.273, 58.756)), module, CvGenerator::NOTECENTRE_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(35.683, 58.756)), module, CvGenerator::NOTERANGE_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(14.176, 58.756)), module, CvGenerator::NOTECENTRE_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(36.395, 58.756)), module, CvGenerator::NOTERANGE_PARAM));
 
-        addParam(createParamCentered<RoundBlackSnapKnob>(mm2px(Vec(56.688, 39.551)), module, CvGenerator::LEVELQUANTISE_PARAM));
+        addParam(createParamCentered<RoundBlackSnapKnob>(mm2px(Vec(14.176, 77.726)), module, CvGenerator::LEVELQUANTISE_PARAM));
         //addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(56.688, 58.756)), module, CvGenerator::LEVELRANGE_PARAM));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(57.4, 83.234)), module, CvGenerator::CV_LEVEL_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(36.4, 95.54)), module, CvGenerator::CV_LEVEL_OUTPUT));
 
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(14.172, 106.832)), module, CvGenerator::EXCLOC_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(14.172, 113.29)), module, CvGenerator::EXCLOC_INPUT));
 
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(35.683, 83.234)), module, CvGenerator::GATE_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(35.786, 107.579)), module, CvGenerator::CV_PITCH_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(36.4, 113.3)), module, CvGenerator::GATE_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(36.4, 77.7)), module, CvGenerator::CV_PITCH_OUTPUT));
 
-        addChild(createLightCentered<MediumLight<RedLight>>(mm2px(Vec(25.4, 21.356)), module, CvGenerator::BLINK_LIGHT));
+        addChild(createLightCentered<MediumLight<RedLight>>(mm2px(Vec(25.4, 21.36)), module, CvGenerator::BLINK_LIGHT));
     }
 };
 

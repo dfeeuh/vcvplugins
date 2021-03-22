@@ -25,7 +25,6 @@ struct CvGenerator : Module {
         NUM_OUTPUTS
     };
     enum LightIds {
-        BLINK_LIGHT,
         RUNNING_LIGHT,
         NUM_LIGHTS
     };
@@ -135,8 +134,6 @@ struct CvGenerator : Module {
             outputs[CV_PITCH_OUTPUT].setVoltage(cv_pitch);
             outputs[CV_LEVEL_OUTPUT].setVoltage(cv_level);
 
-            // Blink light at 1Hz    
-            lights[BLINK_LIGHT].setBrightness((phase < 0.5) ? 1.f : 0.f);
             lights[RUNNING_LIGHT].setBrightness(1.f);
         }
         else
@@ -144,7 +141,6 @@ struct CvGenerator : Module {
             outputs[CV_PITCH_OUTPUT].setVoltage(0);
                outputs[GATE_OUTPUT].setVoltage(0);
             outputs[CV_LEVEL_OUTPUT].setVoltage(0);
-            lights[BLINK_LIGHT].setBrightness(0.f);
             lights[RUNNING_LIGHT].setBrightness(0.f);
         }        
     }
@@ -234,8 +230,6 @@ struct CvGeneratorWidget : ModuleWidget {
 
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(36.4, 113.3)), module, CvGenerator::GATE_OUTPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(36.4, 77.7)), module, CvGenerator::CV_PITCH_OUTPUT));
-
-        addChild(createLightCentered<MediumLight<RedLight>>(mm2px(Vec(25.4, 21.36)), module, CvGenerator::BLINK_LIGHT));
     }
 };
 

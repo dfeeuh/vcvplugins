@@ -571,7 +571,7 @@
        aria-label="RUN"
        id="text1311"
        style="font-weight:bold;font-size:2.11667px;line-height:1.25;font-family:sans-serif;-inkscape-font-specification:'sans-serif, Bold';stroke-width:0.264583"
-       transform="translate(2.1416128,3.7041668)">
+       transform="translate(18.445743,5.8208336)">
       <path
          d="m 5.4287656,179.94471 q 0,-0.0579 -0.023771,-0.0992 -0.023771,-0.0413 -0.081649,-0.0651 -0.040308,-0.0165 -0.094051,-0.0196 -0.053744,-0.004 -0.1250571,-0.004 H 4.9605764 v 0.41444 H 5.082533 q 0.095085,0 0.1591637,-0.009 0.064079,-0.009 0.1074871,-0.0424 0.041341,-0.032 0.059945,-0.0703 0.019637,-0.0393 0.019637,-0.10438 z m 0.6190846,1.06763 H 5.5631246 l -0.4196133,-0.5643 H 4.9605764 v 0.5643 H 4.5657679 v -1.53892 h 0.6655935 q 0.136426,0 0.2346113,0.0155 0.098185,0.0155 0.1839684,0.0672 0.086816,0.0517 0.1374595,0.13436 0.051677,0.0816 0.051677,0.20567 0,0.17053 -0.079582,0.27802 -0.078548,0.10749 -0.2253096,0.1788 z"
          style="stroke-width:0.264583"
@@ -763,8 +763,8 @@
     <circle
        style="display:inline;opacity:1;vector-effect:none;fill:#ff0000;fill-opacity:1;fill-rule:evenodd;stroke:none;stroke-width:0.999999;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;paint-order:normal"
        id="path4954-2-0"
-       cx="9.0958691"
-       cy="21.355656"
+       cx="25.4"
+       cy="23.472324"
        inkscape:label="runLight"
        r="4" />
     <circle

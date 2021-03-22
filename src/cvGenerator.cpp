@@ -203,8 +203,8 @@ struct CvGeneratorWidget : ModuleWidget {
         addChild(createWidget<ScrewSilver>(Vec(box.size.x - 2 * RACK_GRID_WIDTH, RACK_GRID_HEIGHT - RACK_GRID_WIDTH)));
 
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(14.17, 95.54)), module, CvGenerator::CLOCK_PARAM));
-        addParam(createParamCentered<LEDButton>(mm2px(Vec(9.0, 21.35)), module, CvGenerator::RUN_PARAM));
-        addChild(createLightCentered<MediumLight<GreenLight>>(mm2px(Vec(9.1, 21.35)), module, CvGenerator::RUNNING_LIGHT));
+        addParam(createParamCentered<LEDButton>(mm2px(Vec(25.4, 23.47)), module, CvGenerator::RUN_PARAM));
+        addChild(createLightCentered<MediumLight<GreenLight>>(mm2px(Vec(25.4, 23.47)), module, CvGenerator::RUNNING_LIGHT));
 
         // Musical Key control parameters
         auto keyCtrl = createParamCentered<KeyControlKnob>(mm2px(Vec(25.4, 41.67)), module, CvGenerator::KEY_PARAM);

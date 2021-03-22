@@ -1,10 +1,10 @@
 {
-  "slug": "MyPlugin",
-  "name": "MyPlugin",
+  "slug": "DTFEE",
+  "name": "DTFEE",
   "version": "1.0.0",
   "license": "CC0-1.0",
-  "brand": "MyPlugin",
-  "author": "",
+  "brand": "DTFEE",
+  "author": "DTFEE",
   "authorEmail": "",
   "authorUrl": "",
   "pluginUrl": "",
@@ -14,16 +14,16 @@
   "changelogUrl": "",
   "modules": [
     {
-      "slug": "CvGenerator",
-      "name": "CvGenerator",
-      "description": "",
-      "tags": []
-    },
-    {
-      "slug": "Clock",
-      "name": "Clock",
-      "description": "",
-      "tags": []
+      "slug": "LfsrGenerator",
+      "name": "LFSR Note Generator",
+      "description": "Random note and level generator with scale snapping.",
+      "tags": [
+        "Random", 
+        "Generator", 
+        "Pitch", 
+        "Level", 
+        "Scale", 
+        "Snap"]
     }
   ]
 }

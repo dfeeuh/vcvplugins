@@ -2,7 +2,7 @@
 #include "plugin.hpp"
 #include <algorithm>
 
-struct CvGenerator : Module {
+struct LfsrGenerator : Module {
     enum ParamIds {
         CLOCK_PARAM,
         KEY_PARAM,
@@ -45,7 +45,7 @@ struct CvGenerator : Module {
     float clkDiv;
 
 
-    CvGenerator() :    
+    LfsrGenerator() :    
         phase{0.f}, clkDiv{0.f}
     {
         config(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_LIGHTS);
@@ -192,46 +192,46 @@ struct AccidentalSwitch : CKSSThree, KeyControl<NoteGenerator::ACCIDENTAL> {
     }
 };
 
-struct CvGeneratorWidget : ModuleWidget {
-    CvGeneratorWidget(CvGenerator* module) {
+struct LfsrGeneratorWidget : ModuleWidget {
+    LfsrGeneratorWidget(LfsrGenerator* module) {
         setModule(module);
-        setPanel(APP->window->loadSvg(asset::plugin(pluginInstance, "res/CvGenerator.svg")));
+        setPanel(APP->window->loadSvg(asset::plugin(pluginInstance, "res/LfsrGenerator.svg")));
 
         addChild(createWidget<ScrewSilver>(Vec(RACK_GRID_WIDTH, 0)));
         addChild(createWidget<ScrewSilver>(Vec(box.size.x - 2 * RACK_GRID_WIDTH, 0)));
         addChild(createWidget<ScrewSilver>(Vec(RACK_GRID_WIDTH, RACK_GRID_HEIGHT - RACK_GRID_WIDTH)));
         addChild(createWidget<ScrewSilver>(Vec(box.size.x - 2 * RACK_GRID_WIDTH, RACK_GRID_HEIGHT - RACK_GRID_WIDTH)));
 
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(14.17, 95.54)), module, CvGenerator::CLOCK_PARAM));
-        addParam(createParamCentered<LEDButton>(mm2px(Vec(25.4, 23.47)), module, CvGenerator::RUN_PARAM));
-        addChild(createLightCentered<MediumLight<GreenLight>>(mm2px(Vec(25.4, 23.47)), module, CvGenerator::RUNNING_LIGHT));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(14.17, 95.54)), module, LfsrGenerator::CLOCK_PARAM));
+        addParam(createParamCentered<LEDButton>(mm2px(Vec(25.4, 23.47)), module, LfsrGenerator::RUN_PARAM));
+        addChild(createLightCentered<MediumLight<GreenLight>>(mm2px(Vec(25.4, 23.47)), module, LfsrGenerator::RUNNING_LIGHT));
 
         // Musical Key control parameters
-        auto keyCtrl = createParamCentered<KeyControlKnob>(mm2px(Vec(25.4, 41.67)), module, CvGenerator::KEY_PARAM);
+        auto keyCtrl = createParamCentered<KeyControlKnob>(mm2px(Vec(25.4, 41.67)), module, LfsrGenerator::KEY_PARAM);
         keyCtrl->setNoteGenerator(&module->noteGen);
         addParam(keyCtrl);
 
-        auto majminSw = createParamCentered<MajorMinorSwitch>(mm2px(Vec(41.0, 40.7)), module, CvGenerator::MAJMIN_PARAM);
+        auto majminSw = createParamCentered<MajorMinorSwitch>(mm2px(Vec(41.0, 40.7)), module, LfsrGenerator::MAJMIN_PARAM);
         majminSw->setNoteGenerator(&module->noteGen);
         addParam(majminSw);
 
-        auto accSw = createParamCentered<AccidentalSwitch>(mm2px(Vec(8.94, 40.72)), module, CvGenerator::SHARPFLAT_PARAM);
+        auto accSw = createParamCentered<AccidentalSwitch>(mm2px(Vec(8.94, 40.72)), module, LfsrGenerator::SHARPFLAT_PARAM);
         accSw->setNoteGenerator(&module->noteGen);
         addParam(accSw);
 
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(14.176, 58.756)), module, CvGenerator::NOTECENTRE_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(36.395, 58.756)), module, CvGenerator::NOTERANGE_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(14.176, 58.756)), module, LfsrGenerator::NOTECENTRE_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(36.395, 58.756)), module, LfsrGenerator::NOTERANGE_PARAM));
 
-        addParam(createParamCentered<RoundBlackSnapKnob>(mm2px(Vec(14.176, 77.726)), module, CvGenerator::LEVELQUANTISE_PARAM));
-        //addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(56.688, 58.756)), module, CvGenerator::LEVELRANGE_PARAM));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(36.4, 95.54)), module, CvGenerator::CV_LEVEL_OUTPUT));
+        addParam(createParamCentered<RoundBlackSnapKnob>(mm2px(Vec(14.176, 77.726)), module, LfsrGenerator::LEVELQUANTISE_PARAM));
+        //addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(56.688, 58.756)), module, LfsrGenerator::LEVELRANGE_PARAM));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(36.4, 95.54)), module, LfsrGenerator::CV_LEVEL_OUTPUT));
 
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(14.172, 113.29)), module, CvGenerator::EXCLOC_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(14.172, 113.29)), module, LfsrGenerator::EXCLOC_INPUT));
 
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(36.4, 113.3)), module, CvGenerator::GATE_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(36.4, 77.7)), module, CvGenerator::CV_PITCH_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(36.4, 113.3)), module, LfsrGenerator::GATE_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(36.4, 77.7)), module, LfsrGenerator::CV_PITCH_OUTPUT));
     }
 };
 
 
-Model* modelCvGenerator = createModel<CvGenerator, CvGeneratorWidget>("CvGenerator");
+Model* modelLfsrGenerator = createModel<LfsrGenerator, LfsrGeneratorWidget>("LfsrGenerator");

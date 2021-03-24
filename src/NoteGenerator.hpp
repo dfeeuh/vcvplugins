@@ -1,9 +1,23 @@
 #pragma once
 #include <chrono>
 #include <cstdint>
+#include <atomic>
+#include <memory>
+
 
 #define NUM_NOTES_IN_SCALE 7
 #define NUM_NOTES_CHROMATIC 12
+
+// From https://youtu.be/Q0vrQFyAdWI?t=2663
+// A bit crude but probably fine for this simple plugin...
+class spin_lock {
+public:
+    void lock() noexcept     { while (flag.test_and_set()); }
+    void unlock() noexcept   { flag.clear(); }
+    bool try_lock() noexcept { return ! flag.test_and_set(); }
+private:
+    std::atomic_flag flag = ATOMIC_FLAG_INIT;
+};
 
 // a Galois linear feedback shift register initialised from the clock time
 class LFSR {
@@ -71,11 +85,16 @@ private:
 	LFSR lfsr;
     unsigned noteRange;
     unsigned centreNote;
+    unsigned lastNote_;
 
     // DANGER! these are used in the audio thread and updated in the GUI
-    // by updateKey
-	unsigned keyMap[NUM_NOTES_CHROMATIC];
-	KEY currentKey;
+    // by updateKey. See https://youtu.be/Q0vrQFyAdWI?t=2663
+    spin_lock mutex;
+    struct KEYMAP {
+	    unsigned data[NUM_NOTES_CHROMATIC];
+    };
+    std::unique_ptr<KEYMAP> keyMap_;
+	std::atomic<KEY> currentKey;
 
     // Local to GUI thread only
     KEY_BASE keyBase_;

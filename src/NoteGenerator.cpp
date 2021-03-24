@@ -1,15 +1,25 @@
 #include "NoteGenerator.hpp"
 #include <logger.hpp>
 #include <algorithm>
+#include <mutex>
+
+// C++11 workaround
+template<typename T, typename... Args>
+std::unique_ptr<T> make_unique(Args&&... args)
+{
+    return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
+}
 
 NoteGenerator::NoteGenerator() : 
     noteRange{0x7F}, 
     centreNote{64}, 
+    lastNote_{60},
     currentKey{NONE},
     keyBase_{CHROMATIC},
     accidental_{NATURAL},
     isMinor_{false}
 {
+    assert(std::atomic<KEY>{}.is_lock_free());
 }
 
 static unsigned binarySearch(unsigned *array, unsigned len, unsigned note)
@@ -48,28 +58,33 @@ static unsigned binarySearch(unsigned *array, unsigned len, unsigned note)
 // create a new keyMap. 
 void NoteGenerator::updateKey()
 {
+    KEY newKey = NONE;
     // Depending on major/minor status, read the correct KEY value.
     if (isMinor_)
     {
         constexpr KEY minorkeys[NUM_BASE_KEYS] = {
             NONE, Fs_MAG, Gs_MAG, A_MAG, B_MAG, Cs_MAG, D_MAG, E_MAG};
 
-        currentKey = minorkeys[keyBase_];
+        newKey = minorkeys[keyBase_];
     }
     else
     {
         constexpr KEY majorkeys[NUM_BASE_KEYS] = {
             NONE, A_MAG, B_MAG, C_MAG, D_MAG, E_MAG, F_MAG, G_MAG};
 
-        currentKey = majorkeys[keyBase_];
+        newKey = majorkeys[keyBase_];
     }
 
     // Ignore accidental and return
-    if (currentKey == NONE)
+    if (newKey == NONE)
+    {
+        currentKey.store(newKey);
         return;
-
+    }
+    
     // Add the accidental as an integer
-    currentKey = (KEY)((int)currentKey + (int)accidental_);   
+    newKey = (KEY)((int)newKey + (int)accidental_); 
+    currentKey.store(newKey);
 
     // generate a new key map 
     // The MIDI pitches of the C-major scale
@@ -79,19 +94,24 @@ void NoteGenerator::updateKey()
     for (unsigned i=0; i<NUM_NOTES_IN_SCALE; i++)
     {
         // Key = (C major + new key root note) modulo 12
-        workspace[i] = (currentKey + keyMapBasis[i]) % 12;
+        workspace[i] = (newKey + keyMapBasis[i]) % 12;
     }
 
     // Sort to make all notes in order
     std::sort(workspace, workspace+NUM_NOTES_IN_SCALE);
     
-    for (unsigned i=0; i<NUM_NOTES_CHROMATIC; i++)
+    // See https://youtu.be/Q0vrQFyAdWI?t=2663 for how the thread safety is working
     {
-        // Use a binary search algorithm to fill an array with the nearest value.
-        keyMap[i] = binarySearch(workspace, NUM_NOTES_IN_SCALE, i);
-    }	
-
-    //DEBUG("Key change - note [%d], accidental [%d], isMinor [%d]. Key [%d]\n", keyBase_, accidental_, isMinor_, (int)currentKey);
+        auto newKeyMap = make_unique<KEYMAP>();
+        std::lock_guard<spin_lock> lock(mutex);
+        for (unsigned i=0; i<NUM_NOTES_CHROMATIC; i++)
+        {
+            // Use a binary search algorithm to fill an array with the nearest value.
+            newKeyMap->data[i] = binarySearch(workspace, NUM_NOTES_IN_SCALE, i);
+        }
+        std::swap(keyMap_, newKeyMap);
+        // newKeyMap is deleted once it goes out of scope
+    }
 }
 
 
@@ -108,6 +128,8 @@ void NoteGenerator::setNoteRange(unsigned range)
 
 // Run a linear feedback shift register
 // From https://en.wikipedia.org/wiki/Linear-feedback_shift_register#Galois_LFSRs
+
+// This function is called by the audio thread and therefore must be thread safe.
 unsigned NoteGenerator::generatePitch()
 {
     // Generate the number in Qx.1 format to get a half.
@@ -149,9 +171,17 @@ unsigned NoteGenerator::generatePitch()
     // The remainder is the basis note
     unsigned basisNote  = noteout - (octave * NUM_NOTES_CHROMATIC);
 
-    unsigned note = keyMap[basisNote];
+    // Try the lock and returns immediately. 
+    // From Real-time 101, part 1 https://www.youtube.com/watch?v=Q0vrQFyAdWI
+    std::unique_lock<spin_lock> tryLock(mutex, std::try_to_lock);
+    if (tryLock.owns_lock())
+    {
+        lastNote_ = (keyMap_->data[basisNote] + octave * NUM_NOTES_CHROMATIC);
+    }
 
-    return (note + octave * NUM_NOTES_CHROMATIC);
+    // If we fail to get a new note, just use the last one. The keyMap_ will be 
+    // updated on the next note.    
+    return lastNote_;    
 } 
 
 // Generate a random value between 0 and 127

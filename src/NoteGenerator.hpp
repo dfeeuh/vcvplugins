@@ -81,6 +81,14 @@ public:
         SHARP
     } ACCIDENTAL;
 
+    typedef enum
+    {
+        MAJOR=0,
+        MINOR,
+        PENTATONIC_MAJ,
+        PENTATONIC_MIN
+    } MODE;
+
 private:
 	LFSR lfsr;
     unsigned noteRange;
@@ -100,6 +108,7 @@ private:
     KEY_BASE keyBase_;
     ACCIDENTAL accidental_;
     bool isMinor_;
+    MODE mode_;
 
 public:
     NoteGenerator();
@@ -108,6 +117,7 @@ public:
     void updateKey(KEY_BASE note);
     void updateKey(bool isMinor);
     void updateKey(ACCIDENTAL accidental);
+    void updateKey(MODE mode);
 
     void setNoteOffset(unsigned offset);
     void setNoteRange(unsigned range);

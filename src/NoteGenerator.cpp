@@ -17,7 +17,8 @@ NoteGenerator::NoteGenerator() :
     currentKey{NONE},
     keyBase_{CHROMATIC},
     accidental_{NATURAL},
-    isMinor_{false}
+    isMinor_{false},
+    mode_{MAJOR}
 {
     assert(std::atomic<KEY>{}.is_lock_free());
 }
@@ -58,21 +59,31 @@ static unsigned binarySearch(unsigned *array, unsigned len, unsigned note)
 // create a new keyMap. 
 void NoteGenerator::updateKey()
 {
+    constexpr KEY majorkeys[NUM_BASE_KEYS] = {
+        NONE, A_MAG, B_MAG, C_MAG, D_MAG, E_MAG, F_MAG, G_MAG};
+
+    constexpr KEY minorkeys[NUM_BASE_KEYS] = {
+        NONE, Fs_MAG, Gs_MAG, A_MAG, B_MAG, Cs_MAG, D_MAG, E_MAG};    
+
     KEY newKey = NONE;
     // Depending on major/minor status, read the correct KEY value.
-    if (isMinor_)
+    switch(mode_)
     {
-        constexpr KEY minorkeys[NUM_BASE_KEYS] = {
-            NONE, Fs_MAG, Gs_MAG, A_MAG, B_MAG, Cs_MAG, D_MAG, E_MAG};
-
-        newKey = minorkeys[keyBase_];
-    }
-    else
-    {
-        constexpr KEY majorkeys[NUM_BASE_KEYS] = {
-            NONE, A_MAG, B_MAG, C_MAG, D_MAG, E_MAG, F_MAG, G_MAG};
-
+    case MAJOR:
         newKey = majorkeys[keyBase_];
+        break;
+
+    case MINOR:
+        newKey = minorkeys[keyBase_];
+        break;
+
+    case PENTATONIC_MAJ:
+        // TODO
+    case PENTATONIC_MIN:
+        // TODO
+    default:
+        // assert(0);
+         break;
     }
 
     // Ignore accidental and return
@@ -197,10 +208,19 @@ void NoteGenerator::updateKey(KEY_BASE note) {
 
 void NoteGenerator::updateKey(bool isMinor) {
     isMinor_ = isMinor;
-    updateKey();
+    //updateKey();
+
+    // TODO - replace this
+    updateKey(isMinor_ ? MINOR : MAJOR);
 }
 
 void NoteGenerator::updateKey(ACCIDENTAL accidental) {
     accidental_ = accidental;
+    updateKey();
+}
+
+void NoteGenerator::updateKey(MODE mode)
+{
+    mode_ = mode;
     updateKey();
 }

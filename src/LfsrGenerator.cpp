@@ -59,12 +59,17 @@ struct LfsrGenerator : Module {
             (float)NoteGenerator::KEY_BASE::A, "Key");
         configParam(NOTECENTRE_PARAM, 0.f, 127.f, 64.f, "Key Offset");
         configParam(NOTERANGE_PARAM, 1.f, 127.f, 64.f, "Key Range");
-        configParam(MAJMIN_PARAM, 0.f, 1.f, 1.f, "Major Minor");
+        // Mode (Major, Minor, etc) switch
+        configParam(MAJMIN_PARAM, 
+            (float)NoteGenerator::MODE::MAJOR,
+            (float)NoteGenerator::MODE::PENTATONIC_MIN,
+            (float)NoteGenerator::MODE::MAJOR, "Mode");
+        
         configParam(SHARPFLAT_PARAM, -1.0, 1.f, 0.f, "Sharp Flat Natural");
 
         // CV Level controls: 0 - none, 1 - on/off, 2 - 4 levels
-         configParam(LEVELQUANTISE_PARAM, 0.f, 3.f, 0.f, "Level quantize");
-         // Level range is Median +/- Range
+        configParam(LEVELQUANTISE_PARAM, 0.f, 3.f, 0.f, "Level quantize");
+        // Level range is Median +/- Range
         //configParam(LEVELRANGE_PARAM, 0.f, 5.f, 5.f, "Level Range");
     }
 
@@ -173,12 +178,12 @@ struct KeyControlKnob : RoundBlackSnapKnob, KeyControl<NoteGenerator::KEY_BASE> 
 };
 
 // Override onChange to update the key based on the value of CKSS switch
-struct MajorMinorSwitch : CKSS, KeyControl<bool> {
+struct MajorMinorSwitch : CKSSThree, KeyControl<NoteGenerator::MODE> {
 
     void onChange(const event::Change& e) override {
-        CKSS::onChange(e);
+        CKSSThree::onChange(e);
 
-        updateKey(paramQuantity->getValue() == 1.0f ? false : true);
+        updateKey((NoteGenerator::MODE)paramQuantity->getValue());
     }
 };
 

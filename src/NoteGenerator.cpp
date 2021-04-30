@@ -17,7 +17,6 @@ NoteGenerator::NoteGenerator() :
     currentKey{NONE},
     keyBase_{CHROMATIC},
     accidental_{NATURAL},
-    isMinor_{false},
     mode_{MAJOR}
 {
     assert(std::atomic<KEY>{}.is_lock_free());
@@ -30,7 +29,7 @@ static unsigned binarySearch(unsigned *array, unsigned len, unsigned note)
     // Set as the wraparound case, in case no matches are found
     unsigned closest = array[len-1];
     int s = 0;
-    int e = NUM_NOTES_IN_SCALE;
+    int e = len;
     while (s <= e)
     {
         int mid = (s + e) / 2;
@@ -69,21 +68,15 @@ void NoteGenerator::updateKey()
     // Depending on major/minor status, read the correct KEY value.
     switch(mode_)
     {
+    case PENTATONIC_MAJ:
     case MAJOR:
         newKey = majorkeys[keyBase_];
         break;
 
+    case PENTATONIC_MIN:
     case MINOR:
         newKey = minorkeys[keyBase_];
         break;
-
-    case PENTATONIC_MAJ:
-        // TODO
-    case PENTATONIC_MIN:
-        // TODO
-    default:
-        // assert(0);
-         break;
     }
 
     // Ignore accidental and return
@@ -98,18 +91,34 @@ void NoteGenerator::updateKey()
     currentKey.store(newKey);
 
     // generate a new key map 
-    // The MIDI pitches of the C-major scale
-    const unsigned keyMapBasis[NUM_NOTES_IN_SCALE] = {0, 2, 4, 5, 7, 9, 11};
     unsigned workspace[NUM_NOTES_IN_SCALE];
+    unsigned numNotesInScale;
 
-    for (unsigned i=0; i<NUM_NOTES_IN_SCALE; i++)
+    // The MIDI pitches of the C-major scale
+    unsigned keyMapBasisStandard[NUM_NOTES_IN_SCALE] = {0, 2, 4, 5, 7, 9, 11};
+    // MIDI pitches of the C-major pentatonic
+    unsigned keyMapBasisPenta[5] = {0, 2, 4, 7, 9};
+    unsigned *keyMapBasis;
+
+    if (mode_ == MAJOR | mode_ == MINOR)
+    {
+        numNotesInScale = NUM_NOTES_IN_SCALE;
+        keyMapBasis = keyMapBasisStandard;
+    }
+    else /* Pentatonic */ 
+    {
+        numNotesInScale = 5;
+        keyMapBasis = keyMapBasisPenta;
+    }
+
+    for (unsigned i=0; i<numNotesInScale; i++)
     {
         // Key = (C major + new key root note) modulo 12
         workspace[i] = (newKey + keyMapBasis[i]) % 12;
     }
 
     // Sort to make all notes in order
-    std::sort(workspace, workspace+NUM_NOTES_IN_SCALE);
+    std::sort(workspace, workspace+numNotesInScale);
     
     // See https://youtu.be/Q0vrQFyAdWI?t=2663 for how the thread safety is working
     {
@@ -118,7 +127,7 @@ void NoteGenerator::updateKey()
         for (unsigned i=0; i<NUM_NOTES_CHROMATIC; i++)
         {
             // Use a binary search algorithm to fill an array with the nearest value.
-            newKeyMap->data[i] = binarySearch(workspace, NUM_NOTES_IN_SCALE, i);
+            newKeyMap->data[i] = binarySearch(workspace, numNotesInScale, i);
         }
         std::swap(keyMap_, newKeyMap);
         // newKeyMap is deleted once it goes out of scope
@@ -204,14 +213,6 @@ unsigned NoteGenerator::generateVelocity()
 void NoteGenerator::updateKey(KEY_BASE note) {
     keyBase_ = note;
     updateKey();
-}
-
-void NoteGenerator::updateKey(bool isMinor) {
-    isMinor_ = isMinor;
-    //updateKey();
-
-    // TODO - replace this
-    updateKey(isMinor_ ? MINOR : MAJOR);
 }
 
 void NoteGenerator::updateKey(ACCIDENTAL accidental) {

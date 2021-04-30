@@ -85,8 +85,8 @@ public:
     {
         MAJOR=0,
         MINOR,
-        PENTATONIC_MAJ,
-        PENTATONIC_MIN
+        PENTATONIC_MIN,
+        PENTATONIC_MAJ
     } MODE;
 
 private:
@@ -107,7 +107,6 @@ private:
     // Local to GUI thread only
     KEY_BASE keyBase_;
     ACCIDENTAL accidental_;
-    bool isMinor_;
     MODE mode_;
 
 public:
